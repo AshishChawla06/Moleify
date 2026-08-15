@@ -4,6 +4,8 @@
 
 ![Moleify App Icon](AppIcon.icns)
 
+[![Build & Release macOS App Bundle](https://github.com/AshishChawla06/Moleify/actions/workflows/build.yml/badge.svg)](https://github.com/AshishChawla06/Moleify/actions/workflows/build.yml)
+
 ---
 
 ## 📜 Open Source & Attribution Notice
@@ -22,8 +24,9 @@
 - **📦 App Uninstaller (`mo uninstall`)**: Installed application bundle inspector + deep leftover finder across `Application Support`, `Containers`, `Preferences (.plist)`, `LaunchAgents`, and `Saved Application State`.
 - **🏗️ Project Purge (`mo purge`)**: One-click purge for heavy developer build artifacts (`node_modules`, `.build`, `target/` Rust, `venv` Python, `DerivedData`, `.gradle`, `.next`).
 - **💾 Installer Finder (`mo installer`)**: Scans Downloads & Desktop for leftover `.dmg`, `.pkg`, `.iso` installer images.
-- **📈 Disk Storage Analyzer (`mo analyze`)**: Interactive storage category distribution donut chart + top 30 largest files finder with custom path targeting (`/`, `/Volumes`, `/private/tmp`).
-- **⚡ System Optimizer (`mo optimize`)**: Execute maintenance scripts (Flush DNS, Purge RAM, Rebuild LaunchServices, Re-index Spotlight, Refresh Font Caches).
+- **📈 Disk Storage Analyzer & Duplicates (`mo analyze`, `mo duplicates`)**: Interactive storage category distribution donut chart + duplicate file finder + top 30 largest files finder with custom path targeting (`/`, `/Volumes`, `/private/tmp`).
+- **⚡ System Optimizer (`mo optimize`)**: Execute maintenance scripts with AppleScript admin elevation (Flush DNS, Purge RAM, Rebuild LaunchServices, Re-index Spotlight, Refresh Font Caches).
+- **🔋 Battery & Thermal Telemetry (`mo battery`)**: Real-time Apple Silicon battery health percentage, cycle count, AC power state, and CPU thermal throttling monitor.
 - **🔑 Touch ID & CLI Utilities (`mo touchid`, `mo completion`)**: Configure Touch ID authentication for `sudo` terminal commands & install `mo` shell aliases.
 - **🕒 Action History (`mo history`, `mo history --json`)**: Audit past cleaning events and export formatted JSON reports.
 - **🔄 Auto Updater (`mo update`)**: Checks for official releases directly from [tw93/mole GitHub Releases](https://github.com/tw93/mole/releases).
@@ -31,7 +34,15 @@
 
 ---
 
-## 🚀 Building & Running
+## 🤖 GitHub Actions Automated Releases
+
+Moleify features a GitHub Actions workflow ([`.github/workflows/build.yml`](.github/workflows/build.yml)) running on `macos-14` (Apple Silicon M-series runners):
+- **Automated Testing & Build**: Runs `swift test` and packages `Moleify.app`.
+- **Automated GitHub Releases**: Pushing a tag (e.g. `git tag v1.0.0 && git push origin v1.0.0`) automatically compiles the release bundle and attaches `Moleify-macOS-arm64.zip` to GitHub Releases!
+
+---
+
+## 🚀 Local Building & Running
 
 ### Requirements
 - macOS 14.0 (Sonoma / Sequoia) or later
