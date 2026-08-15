@@ -3,6 +3,8 @@ import SwiftUI
 public struct AnalyzerView: View {
     @EnvironmentObject private var analyzer: DiskAnalyzerService
     @State private var customPathInput: String = "/"
+    @State private var showDuplicatesToast: Bool = false
+    @State private var reclaimedDupSpace: UInt64 = 0
     
     public init() {}
     
@@ -12,39 +14,72 @@ public struct AnalyzerView: View {
                 // Header
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Disk Storage Analyzer")
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.white.opacity(0.98))
-                        Text("mo analyze • Analyze disk space allocation across categories and target specific drives or directories")
+                        Text("Disk Storage Analyzer & Duplicates")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundStyle(.primary)
+                        Text("mo analyze • Visual storage distribution, category breakdown, duplicate finder, and large files inspector")
                             .font(.subheadline)
-                            .foregroundStyle(Color.white.opacity(0.75))
+                            .foregroundStyle(.secondary)
                     }
                     Spacer()
                     
-                    Button(action: {
-                        Task {
-                            await analyzer.analyzeStorage(path: customPathInput)
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            Task {
+                                await analyzer.scanDuplicateFiles()
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "doc.on.doc.fill")
+                                Text(analyzer.isScanningDuplicates ? "Scanning..." : "Find Duplicates")
+                            }
+                            .font(.headline.weight(.bold))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
                         }
-                    }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                            Text(analyzer.isAnalyzing ? "Analyzing..." : "Analyze Disk")
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color.applePurple)
+                        
+                        Button(action: {
+                            Task {
+                                await analyzer.analyzeStorage(path: customPathInput)
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                Text(analyzer.isAnalyzing ? "Analyzing..." : "Analyze Disk")
+                            }
+                            .font(.headline.weight(.bold))
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 9)
                         }
-                        .font(.headline.weight(.bold))
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 9)
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color.appleBlue)
+                        .disabled(analyzer.isAnalyzing)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Color(hex: "#0284C7"))
-                    .disabled(analyzer.isAnalyzing)
                 }
                 
-                // Target Path Preset Quick Buttons (mo analyze /Volumes, mo analyze /private/tmp)
+                if showDuplicatesToast {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Color.appleGreen)
+                        Text("Duplicate files moved to Trash! Reclaimed \(ByteFormatter.string(from: reclaimedDupSpace)).")
+                            .font(.body.weight(.bold))
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Button("Dismiss") { showDuplicatesToast = false }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(14)
+                    .background(Color.appleGreen.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.appleGreen.opacity(0.4), lineWidth: 1))
+                }
+                
+                // Target Path Preset Quick Buttons
                 GlassCard {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("TARGET DISK OR DIRECTORY PRESETS")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(Color.white.opacity(0.7))
+                        SectionHeaderLabel("Target Disk or Directory Presets")
                         
                         HStack(spacing: 12) {
                             Button("Macintosh HD ( / )") {
@@ -52,29 +87,31 @@ public struct AnalyzerView: View {
                                 Task { await analyzer.analyzeStorage(path: "/") }
                             }
                             .buttonStyle(.bordered)
-                            .tint(customPathInput == "/" ? Color(hex: "#38BDF8") : Color.gray)
+                            .tint(customPathInput == "/" ? Color.appleBlue : Color.gray)
                             
                             Button("External Drives ( /Volumes )") {
                                 customPathInput = "/Volumes"
                                 Task { await analyzer.analyzeStorage(path: "/Volumes") }
                             }
                             .buttonStyle(.bordered)
-                            .tint(customPathInput == "/Volumes" ? Color(hex: "#38BDF8") : Color.gray)
+                            .tint(customPathInput == "/Volumes" ? Color.appleBlue : Color.gray)
                             
                             Button("Temp Files ( /private/tmp )") {
                                 customPathInput = "/private/tmp"
                                 Task { await analyzer.analyzeStorage(path: "/private/tmp") }
                             }
                             .buttonStyle(.bordered)
-                            .tint(customPathInput == "/private/tmp" ? Color(hex: "#38BDF8") : Color.gray)
+                            .tint(customPathInput == "/private/tmp" ? Color.appleBlue : Color.gray)
                             
                             Spacer()
                             
                             HStack {
+                                Image(systemName: "folder")
+                                    .foregroundStyle(.secondary)
                                 TextField("Target Path", text: $customPathInput)
                                     .textFieldStyle(.plain)
                                     .font(.system(size: 12, weight: .regular, design: .monospaced))
-                                    .foregroundStyle(Color.white)
+                                    .foregroundStyle(.primary)
                                     .frame(width: 180)
                             }
                             .padding(8)
@@ -93,9 +130,19 @@ public struct AnalyzerView: View {
                         )
                         
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("Storage Allocation by Category")
-                                .font(.title3.weight(.bold))
-                                .foregroundStyle(Color.white.opacity(0.95))
+                            HStack {
+                                Text("Storage Allocation by Category")
+                                    .font(.title3.weight(.bold))
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                if analyzer.selectedCategoryFilter != nil {
+                                    Button("Clear Filter") {
+                                        analyzer.selectedCategoryFilter = nil
+                                    }
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(Color.appleBlue)
+                                }
+                            }
                             
                             GeometryReader { geo in
                                 HStack(spacing: 2) {
@@ -111,25 +158,120 @@ public struct AnalyzerView: View {
                             }
                             .frame(height: 14)
                             
-                            // Legend Grid
+                            // Interactive Legend Grid
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                                 ForEach(analyzer.categories) { cat in
-                                    HStack(spacing: 10) {
-                                        Circle()
-                                            .fill(Color(hex: cat.colorHex))
-                                            .frame(width: 10, height: 10)
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(cat.name)
-                                                .font(.caption.weight(.bold))
-                                                .foregroundStyle(Color.white.opacity(0.95))
-                                            Text(ByteFormatter.string(from: cat.sizeBytes))
-                                                .font(.caption2.weight(.medium))
-                                                .foregroundStyle(Color.white.opacity(0.75))
+                                    Button(action: {
+                                        if analyzer.selectedCategoryFilter == cat.name {
+                                            analyzer.selectedCategoryFilter = nil
+                                        } else {
+                                            analyzer.selectedCategoryFilter = cat.name
                                         }
-                                        Spacer()
+                                    }) {
+                                        HStack(spacing: 10) {
+                                            Circle()
+                                                .fill(Color(hex: cat.colorHex))
+                                                .frame(width: 10, height: 10)
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(cat.name)
+                                                    .font(.caption.weight(.bold))
+                                                    .foregroundStyle(.primary)
+                                                Text(ByteFormatter.string(from: cat.sizeBytes))
+                                                    .font(.caption2.weight(.medium))
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                            Spacer()
+                                            if analyzer.selectedCategoryFilter == cat.name {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundStyle(Color(hex: cat.colorHex))
+                                            }
+                                        }
+                                        .padding(10)
+                                        .background(analyzer.selectedCategoryFilter == cat.name ? Color(hex: cat.colorHex).opacity(0.18) : Color.white.opacity(0.02), in: RoundedRectangle(cornerRadius: 10))
                                     }
-                                    .padding(10)
-                                    .background(Color.white.opacity(0.02), in: RoundedRectangle(cornerRadius: 10))
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Duplicate File Finder Section (mo duplicates)
+                if !analyzer.duplicateGroups.isEmpty {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Duplicate Files Found (mo duplicates)")
+                                    .font(.title3.weight(.bold))
+                                    .foregroundStyle(Color.applePurple)
+                                Text("Review duplicate file copies and reclaim wasted space with one click")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            
+                            Button(action: {
+                                Task {
+                                    let reclaimed = await analyzer.removeSelectedDuplicates()
+                                    reclaimedDupSpace = reclaimed
+                                    withAnimation { showDuplicatesToast = true }
+                                }
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "trash.fill")
+                                    Text("Purge Duplicates")
+                                }
+                                .font(.headline.weight(.bold))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(Color.appleRed)
+                        }
+                        
+                        GlassCard(padding: 0) {
+                            VStack(spacing: 0) {
+                                ForEach(analyzer.duplicateGroups) { group in
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        HStack {
+                                            Image(systemName: "doc.on.doc")
+                                                .foregroundStyle(Color.applePurple)
+                                            Text(group.fileName)
+                                                .font(.body.weight(.bold))
+                                                .foregroundStyle(.primary)
+                                            Spacer()
+                                            Text("\(group.paths.count) copies • \(ByteFormatter.string(from: group.fileSize)) each")
+                                                .font(.caption.weight(.bold).monospacedDigit())
+                                                .foregroundStyle(Color.applePurple)
+                                        }
+                                        
+                                        ForEach(group.paths, id: \.self) { path in
+                                            HStack {
+                                                Image(systemName: path == group.paths.first ? "star.fill" : "doc")
+                                                    .foregroundStyle(path == group.paths.first ? Color.appleYellow : Color.secondary)
+                                                    .font(.caption)
+                                                
+                                                Text(path)
+                                                    .font(.system(size: 12, weight: .regular, design: .monospaced))
+                                                    .foregroundStyle(.secondary)
+                                                    .lineLimit(1)
+                                                Spacer()
+                                                
+                                                if path != group.paths.first {
+                                                    Text("Duplicate Copy")
+                                                        .font(.caption2.weight(.bold))
+                                                        .foregroundStyle(Color.appleRed)
+                                                } else {
+                                                    Text("Original Keep")
+                                                        .font(.caption2.weight(.bold))
+                                                        .foregroundStyle(Color.appleGreen)
+                                                }
+                                            }
+                                            .padding(.leading, 12)
+                                        }
+                                    }
+                                    .padding(14)
+                                    .background(Color.white.opacity(0.01))
                                 }
                             }
                         }
@@ -138,42 +280,64 @@ public struct AnalyzerView: View {
                 
                 // Top Largest Files Section
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Top Largest Files in Target Path (\(analyzer.targetPath))")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(Color.white.opacity(0.95))
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Top Largest Files in Target Path (\(analyzer.targetPath))")
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(.primary)
+                            Text("Filter by file extension type or category")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        
+                        // File Type Filter Buttons
+                        HStack(spacing: 8) {
+                            ForEach(["All", "Media", "Archives", "Developer", "Documents"], id: \.self) { filterType in
+                                Button(filterType) {
+                                    analyzer.fileTypeFilter = filterType
+                                }
+                                .font(.caption.weight(.bold))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(analyzer.fileTypeFilter == filterType ? Color.appleBlue : Color.white.opacity(0.06), in: Capsule())
+                                .foregroundStyle(analyzer.fileTypeFilter == filterType ? Color.white : Color.secondary)
+                            }
+                        }
+                    }
                     
                     if analyzer.isAnalyzing {
                         ProgressView("Scanning directory trees for large files in \(analyzer.targetPath)...")
                             .padding(.vertical, 30)
-                    } else if analyzer.largestFiles.isEmpty {
+                    } else if analyzer.filteredLargestFiles.isEmpty {
                         GlassCard {
-                            Text("Click 'Analyze Disk' above to scan and list top largest files on your Mac.")
+                            Text("No large files found matching current filter.")
                                 .font(.subheadline)
-                                .foregroundStyle(Color.white.opacity(0.75))
+                                .foregroundStyle(.secondary)
                         }
                     } else {
                         GlassCard(padding: 0) {
                             VStack(spacing: 0) {
-                                ForEach(analyzer.largestFiles) { file in
+                                ForEach(analyzer.filteredLargestFiles) { file in
                                     HStack(spacing: 14) {
                                         Image(systemName: "doc.fill")
-                                            .foregroundStyle(Color(hex: "#38BDF8"))
+                                            .foregroundStyle(Color.appleBlue)
                                             .font(.title3)
                                         
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(file.name)
                                                 .font(.body.weight(.bold))
-                                                .foregroundStyle(Color.white.opacity(0.95))
+                                                .foregroundStyle(.primary)
                                             Text(file.path)
                                                 .font(.system(size: 12, weight: .regular, design: .monospaced))
-                                                .foregroundStyle(Color.white.opacity(0.75))
+                                                .foregroundStyle(.secondary)
                                                 .lineLimit(1)
                                         }
                                         Spacer()
                                         
                                         Text(ByteFormatter.string(from: file.sizeBytes))
                                             .font(.body.weight(.bold).monospacedDigit())
-                                            .foregroundStyle(Color.white.opacity(0.95))
+                                            .foregroundStyle(.primary)
                                         
                                         Button(action: {
                                             analyzer.revealInFinder(path: file.path)
@@ -185,7 +349,16 @@ public struct AnalyzerView: View {
                                             .font(.caption.weight(.bold))
                                         }
                                         .buttonStyle(.bordered)
-                                        .foregroundStyle(Color.white.opacity(0.9))
+                                        .foregroundStyle(.primary)
+                                        
+                                        Button(action: {
+                                            analyzer.trashFile(path: file.path)
+                                        }) {
+                                            Image(systemName: "trash")
+                                                .font(.caption.weight(.bold))
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .tint(Color.appleRed)
                                     }
                                     .padding(14)
                                     .background(Color.white.opacity(0.01))
