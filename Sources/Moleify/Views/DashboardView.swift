@@ -78,22 +78,27 @@ public struct DashboardView: View {
                                     .foregroundStyle(Color.appleBlue)
                             }
                             
-                            ZStack {
-                                MetalParticleGaugeView(
-                                    usageValue: monitor.stats.cpuUsage / 100.0,
-                                    themeColor: SIMD3<Float>(0.0, 0.48, 1.0)
-                                )
-                                .frame(height: 110)
-                                
-                                VStack(spacing: 2) {
-                                    Text("\(monitor.stats.cpuCores.count) Cores")
-                                        .font(.caption.weight(.bold))
-                                        .foregroundStyle(.primary)
-                                    Text("Apple Silicon")
-                                        .font(.caption2.weight(.medium))
-                                        .foregroundStyle(.secondary)
+                            HStack {
+                                Spacer()
+                                ZStack {
+                                    MetalParticleGaugeView(
+                                        usageValue: monitor.stats.cpuUsage / 100.0,
+                                        themeColor: SIMD3<Float>(0.0, 0.48, 1.0)
+                                    )
+                                    .frame(width: 120, height: 120)
+                                    
+                                    VStack(spacing: 2) {
+                                        Text("\(monitor.stats.cpuCores.count) Cores")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(.primary)
+                                        Text("Apple Silicon")
+                                            .font(.caption2.weight(.medium))
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
+                                Spacer()
                             }
+                            .padding(.vertical, 4)
                             
                             // Real-Time CPU History Line Graph
                             VStack(alignment: .leading, spacing: 6) {
@@ -124,7 +129,7 @@ public struct DashboardView: View {
                                 Button(action: {
                                     Task {
                                         if let task = optimizer.tasks.first(where: { $0.id == "purge_ram" }) {
-                                            await optimizer.executeTask(task)
+                                             await optimizer.executeTask(task)
                                             withAnimation { showPurgeToast = true }
                                         }
                                     }
@@ -136,22 +141,27 @@ public struct DashboardView: View {
                                 .tint(Color.applePurple)
                             }
                             
-                            ZStack {
-                                MetalParticleGaugeView(
-                                    usageValue: monitor.stats.totalMemory > 0 ? Double(monitor.stats.usedMemory) / Double(monitor.stats.totalMemory) : 0.4,
-                                    themeColor: SIMD3<Float>(0.68, 0.32, 0.87)
-                                )
-                                .frame(height: 110)
-                                
-                                VStack(spacing: 2) {
-                                    Text(ByteFormatter.string(from: monitor.stats.usedMemory))
-                                        .font(.title3.weight(.heavy).monospacedDigit())
-                                        .foregroundStyle(Color.applePurple)
-                                    Text("of \(ByteFormatter.string(from: monitor.stats.totalMemory))")
-                                        .font(.caption.weight(.medium))
-                                        .foregroundStyle(.secondary)
+                            HStack {
+                                Spacer()
+                                ZStack {
+                                    MetalParticleGaugeView(
+                                        usageValue: monitor.stats.totalMemory > 0 ? Double(monitor.stats.usedMemory) / Double(monitor.stats.totalMemory) : 0.4,
+                                        themeColor: SIMD3<Float>(0.68, 0.32, 0.87)
+                                    )
+                                    .frame(width: 120, height: 120)
+                                    
+                                    VStack(spacing: 2) {
+                                        Text(ByteFormatter.string(from: monitor.stats.usedMemory))
+                                            .font(.subheadline.weight(.heavy).monospacedDigit())
+                                            .foregroundStyle(Color.applePurple)
+                                        Text("of \(ByteFormatter.string(from: monitor.stats.totalMemory))")
+                                            .font(.caption2.weight(.medium))
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
+                                Spacer()
                             }
+                            .padding(.vertical, 4)
                             
                             // Memory Composition Breakdown Bar
                             VStack(alignment: .leading, spacing: 6) {
@@ -197,22 +207,27 @@ public struct DashboardView: View {
                                     .foregroundStyle(Color.appleTeal)
                             }
                             
-                            ZStack {
-                                MetalParticleGaugeView(
-                                    usageValue: Double(monitor.stats.usedDiskSpace) / max(Double(monitor.stats.totalDiskSpace), 1.0),
-                                    themeColor: SIMD3<Float>(0.19, 0.69, 0.78)
-                                )
-                                .frame(height: 110)
-                                
-                                VStack(spacing: 2) {
-                                    Text("Free \(ByteFormatter.string(from: monitor.stats.freeDiskSpace))")
-                                        .font(.caption.weight(.bold))
-                                        .foregroundStyle(.primary)
-                                    Text("Capacity \(ByteFormatter.string(from: monitor.stats.totalDiskSpace))")
-                                        .font(.caption2.weight(.medium))
-                                        .foregroundStyle(.secondary)
+                            HStack {
+                                Spacer()
+                                ZStack {
+                                    MetalParticleGaugeView(
+                                        usageValue: Double(monitor.stats.usedDiskSpace) / max(Double(monitor.stats.totalDiskSpace), 1.0),
+                                        themeColor: SIMD3<Float>(0.19, 0.69, 0.78)
+                                    )
+                                    .frame(width: 120, height: 120)
+                                    
+                                    VStack(spacing: 2) {
+                                        Text("Free \(ByteFormatter.string(from: monitor.stats.freeDiskSpace))")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(.primary)
+                                        Text("Capacity \(ByteFormatter.string(from: monitor.stats.totalDiskSpace))")
+                                            .font(.caption2.weight(.medium))
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
+                                Spacer()
                             }
+                            .padding(.vertical, 4)
                             
                             VStack(spacing: 6) {
                                 HStack {

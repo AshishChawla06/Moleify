@@ -40,21 +40,34 @@ public enum MetalShaderSource {
     fragment float4 particle_gauge_fragment(VertexOut in [[stage_in]],
                                             constant float &time [[buffer(0)]],
                                             constant float &usageValue [[buffer(1)]],
-                                            constant float3 &themeColor [[buffer(2)]]) {
+                                            constant float3 &themeColor [[buffer(2)]],
+                                            constant float2 &resolution [[buffer(3)]]) {
         float2 uv = in.uv - 0.5;
-        float dist = length(uv);
-        float angle = atan2(uv.y, uv.x);
-        float normAngle = (angle + 3.14159265) / (2.0 * 3.14159265);
+        // Aspect ratio correction to guarantee perfectly circular rendering
+        if (resolution.y > 0.0) {
+            uv.x *= (resolution.x / resolution.y);
+        }
         
-        float ringInner = 0.32;
-        float ringOuter = 0.42;
+        float dist = length(uv);
+        
+        // Clockwise normalized angle starting at 12 o'clock
+        float angle = atan2(uv.y, uv.x);
+        float normAngle = angle + 3.14159265 * 0.5;
+        if (normAngle < 0.0) {
+            normAngle += 2.0 * 3.14159265;
+        }
+        normAngle /= (2.0 * 3.14159265);
+        
+        float ringInner = 0.33;
+        float ringOuter = 0.43;
         
         if (dist >= ringInner && dist <= ringOuter) {
+            float edgeSmoothing = smoothstep(ringInner, ringInner + 0.012, dist) * (1.0 - smoothstep(ringOuter - 0.012, ringOuter, dist));
             if (normAngle <= usageValue) {
-                float pulse = 0.85 + 0.15 * sin(time * 4.0 + normAngle * 10.0);
-                return float4(themeColor * pulse, 0.9);
+                float pulse = 0.90 + 0.10 * sin(time * 3.5 + normAngle * 6.28);
+                return float4(themeColor * pulse, 0.95 * edgeSmoothing);
             } else {
-                return float4(1.0, 1.0, 1.0, 0.08);
+                return float4(1.0, 1.0, 1.0, 0.09 * edgeSmoothing);
             }
         }
         return float4(0.0, 0.0, 0.0, 0.0);
@@ -220,11 +233,13 @@ public struct MetalParticleGaugeView: NSViewRepresentable {
             var time = Float(Date().timeIntervalSince(startTime))
             var val = usageValue
             var color = themeColor
+            var resolution = SIMD2<Float>(Float(view.bounds.width), Float(view.bounds.height))
             
             encoder?.setRenderPipelineState(pipelineState)
             encoder?.setFragmentBytes(&time, length: MemoryLayout<Float>.size, index: 0)
             encoder?.setFragmentBytes(&val, length: MemoryLayout<Float>.size, index: 1)
             encoder?.setFragmentBytes(&color, length: MemoryLayout<SIMD3<Float>>.size, index: 2)
+            encoder?.setFragmentBytes(&resolution, length: MemoryLayout<SIMD2<Float>>.size, index: 3)
             
             encoder?.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
             encoder?.endEncoding()
