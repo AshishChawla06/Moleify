@@ -21,6 +21,12 @@ public final class SystemMonitorService: ObservableObject {
     private var previousNetTxBytes: UInt64 = 0
     private var lastNetworkCheckDate: Date = Date()
     
+    @inline(__always)
+    private var taskSelfPort: mach_port_t {
+        let port: mach_port_t = mach_task_self_
+        return port
+    }
+    
     public init() {
         startMonitoring()
     }
@@ -84,9 +90,9 @@ public final class SystemMonitorService: ObservableObject {
                 totalUsage += coreUsage
             }
             
-            // Deallocate previous info
+            // Deallocate previous info safely under Swift 6 Strict Concurrency
             let prevSize = MemoryLayout<integer_t>.size * Int(previousCPUInfoCount)
-            vm_deallocate(mach_task_self_, vm_address_t(bitPattern: prevInfo), vm_size_t(prevSize))
+            vm_deallocate(taskSelfPort, vm_address_t(bitPattern: prevInfo), vm_size_t(prevSize))
         } else {
             for i in 0..<Int(numCPUs) {
                 cores.append(CPUCoreInfo(id: i + 1, usagePercentage: 15.0))
