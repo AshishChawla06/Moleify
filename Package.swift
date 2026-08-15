@@ -17,8 +17,8 @@ let package = Package(
         .executableTarget(
             name: "Moleify",
             dependencies: [],
-            resources: [
-                .process("Metal/Shaders.metal")
+            exclude: [
+                "Metal/Shaders.metal"
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")

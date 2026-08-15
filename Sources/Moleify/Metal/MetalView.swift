@@ -2,6 +2,66 @@ import SwiftUI
 import MetalKit
 import Metal
 
+// MARK: - Metal Shader Source String
+public enum MetalShaderSource {
+    public static let code: String = """
+    #include <metal_stdlib>
+    using namespace metal;
+
+    struct VertexOut {
+        float4 position [[position]];
+        float2 uv;
+    };
+
+    vertex VertexOut basic_vertex(uint vertexID [[vertex_id]]) {
+        float2 positions[4] = {
+            float2(-1.0, -1.0),
+            float2( 1.0, -1.0),
+            float2(-1.0,  1.0),
+            float2( 1.0,  1.0)
+        };
+        
+        VertexOut out;
+        out.position = float4(positions[vertexID], 0.0, 1.0);
+        out.uv = positions[vertexID] * 0.5 + 0.5;
+        return out;
+    }
+
+    fragment float4 liquid_glass_fragment(VertexOut in [[stage_in]],
+                                          constant float &time [[buffer(0)]],
+                                          constant float2 &resolution [[buffer(1)]]) {
+        float2 uv = in.uv;
+        float wave1 = sin(uv.x * 6.0 + time * 0.8) * 0.05;
+        float wave2 = cos(uv.y * 5.0 - time * 0.6) * 0.05;
+        float glow = 0.05 + 0.03 * sin(time + uv.x * 3.0);
+        return float4(0.02 + glow, 0.04 + glow * 1.2, 0.08 + glow * 1.5, 0.25);
+    }
+
+    fragment float4 particle_gauge_fragment(VertexOut in [[stage_in]],
+                                            constant float &time [[buffer(0)]],
+                                            constant float &usageValue [[buffer(1)]],
+                                            constant float3 &themeColor [[buffer(2)]]) {
+        float2 uv = in.uv - 0.5;
+        float dist = length(uv);
+        float angle = atan2(uv.y, uv.x);
+        float normAngle = (angle + 3.14159265) / (2.0 * 3.14159265);
+        
+        float ringInner = 0.32;
+        float ringOuter = 0.42;
+        
+        if (dist >= ringInner && dist <= ringOuter) {
+            if (normAngle <= usageValue) {
+                float pulse = 0.85 + 0.15 * sin(time * 4.0 + normAngle * 10.0);
+                return float4(themeColor * pulse, 0.9);
+            } else {
+                return float4(1.0, 1.0, 1.0, 0.08);
+            }
+        }
+        return float4(0.0, 0.0, 0.0, 0.0);
+    }
+    """
+}
+
 // MARK: - Metal Ambient Liquid Glass Background View
 public struct MetalBackgroundView: NSViewRepresentable {
     public init() {}
@@ -37,7 +97,9 @@ public struct MetalBackgroundView: NSViewRepresentable {
         }
         
         private func setupPipeline(device: MTLDevice) {
-            guard let library = device.makeDefaultLibrary() else { return }
+            let library = (try? device.makeLibrary(source: MetalShaderSource.code, options: nil)) ?? device.makeDefaultLibrary()
+            guard let library = library else { return }
+            
             let vertexFunction = library.makeFunction(name: "basic_vertex")
             let fragmentFunction = library.makeFunction(name: "liquid_glass_fragment")
             
@@ -127,7 +189,9 @@ public struct MetalParticleGaugeView: NSViewRepresentable {
         }
         
         private func setupPipeline(device: MTLDevice) {
-            guard let library = device.makeDefaultLibrary() else { return }
+            let library = (try? device.makeLibrary(source: MetalShaderSource.code, options: nil)) ?? device.makeDefaultLibrary()
+            guard let library = library else { return }
+            
             let vertexFunction = library.makeFunction(name: "basic_vertex")
             let fragmentFunction = library.makeFunction(name: "particle_gauge_fragment")
             
