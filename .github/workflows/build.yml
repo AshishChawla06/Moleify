@@ -39,7 +39,9 @@ jobs:
 
       - name: Package App Bundle for Release
         run: |
-          zip -r Moleify-macOS-arm64.zip Moleify.app README.md LICENSE
+          # Strip macOS quarantine attribute before packaging
+          xattr -cr Moleify.app
+          zip -r --symlinks Moleify-macOS-arm64.zip Moleify.app README.md LICENSE
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4

@@ -54,3 +54,8 @@ cat << 'EOF' > "$CONTENTS_DIR/Info.plist"
 EOF
 
 echo "✨ Moleify.app created successfully with App Icon!"
+
+# Strip macOS quarantine attribute so Gatekeeper doesn't block the app
+echo "🔓 Removing quarantine attribute (Gatekeeper bypass for unsigned app)..."
+xattr -cr "$APP_DIR"
+echo "✅ Done. Moleify.app is ready to run."

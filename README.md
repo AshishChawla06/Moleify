@@ -36,13 +36,27 @@
 
 ## 🤖 GitHub Actions Automated Releases
 
-Moleify features a GitHub Actions workflow ([`.github/workflows/build.yml`](.github/workflows/build.yml)) running on `macos-14` (Apple Silicon M-series runners):
-- **Automated Testing & Build**: Runs `swift test` and packages `Moleify.app`.
-- **Automated GitHub Releases**: Pushing a tag (e.g. `git tag v1.0.0 && git push origin v1.0.0`) automatically compiles the release bundle and attaches `Moleify-macOS-arm64.zip` to GitHub Releases!
+Moleify features a **manual** GitHub Actions workflow ([`.github/workflows/build.yml`](.github/workflows/build.yml)) running on `macos-14` (Apple Silicon M-series runners):
+- **Build**: Compiles and packages a native `Moleify.app` bundle.
+- **Release**: Triggered manually via **Actions → Run workflow** → attaches `Moleify-macOS-arm64.zip` to GitHub Releases.
 
 ---
 
-## 🚀 Local Building & Running
+## 📥 Installation (from GitHub Release)
+
+> **Important**: Moleify is not yet notarized with an Apple Developer certificate. macOS Gatekeeper will block it on first launch. Run the one-liner below to clear the quarantine attribute:
+
+```bash
+# After unzipping the release:
+xattr -cr Moleify.app
+open Moleify.app
+```
+
+Or via **System Settings → Privacy & Security → Open Anyway** after the blocked launch attempt.
+
+---
+
+## 🚀 Building from Source
 
 ### Requirements
 - macOS 14.0 (Sonoma / Sequoia) or later
@@ -51,10 +65,6 @@ Moleify features a GitHub Actions workflow ([`.github/workflows/build.yml`](.git
 ### Build & Package Native `.app` Bundle
 ```bash
 ./scripts/build_app.sh
-```
-
-### Launch
-```bash
 open Moleify.app
 ```
 
