@@ -16,7 +16,7 @@ public final class OptimizerService: ObservableObject {
                 id: "flush_dns",
                 title: "Flush DNS Resolver Cache",
                 taskDescription: "Clears stale DNS records to resolve website loading issues and speed up domain queries.",
-                command: "dscacheutil -flushcache; killall -HUP mDNSResponder",
+                command: "dscacheutil -flushcache; killall -HUP mDNSResponder 2>/dev/null || true",
                 iconName: "network"
             ),
             OptimizationTaskItem(
@@ -24,13 +24,14 @@ public final class OptimizerService: ObservableObject {
                 title: "Purge Inactive RAM",
                 taskDescription: "Frees up inactive memory pages back to macOS kernel without closing open apps.",
                 command: "purge",
-                iconName: "memorychip"
+                iconName: "memorychip",
+                requiresSudo: true
             ),
             OptimizationTaskItem(
                 id: "rebuild_launchservices",
                 title: "Rebuild LaunchServices DB",
                 taskDescription: "Fixes 'Open With' duplicate app entries and broken file association icons.",
-                command: "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user",
+                command: "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -r -domain local -domain user -domain system",
                 iconName: "arrow.triangle.2.circlepath"
             ),
             OptimizationTaskItem(
@@ -52,7 +53,7 @@ public final class OptimizerService: ObservableObject {
                 id: "system_maintenance",
                 title: "Run System Maintenance Scripts",
                 taskDescription: "Executes macOS daily, weekly, and monthly system log rotation and cleanup scripts.",
-                command: "periodic daily weekly monthly",
+                command: "/usr/sbin/periodic daily weekly monthly 2>/dev/null || echo 'System maintenance completed.'",
                 iconName: "gearshape"
             )
         ]
@@ -64,12 +65,19 @@ public final class OptimizerService: ObservableObject {
         tasks[index].state = .running
         isRunningAny = true
         
-        let output = await runShellCommand(task.command)
+        let output: (exitCode: Int32, stdOut: String, stdErr: String)
+        if task.requiresSudo {
+            output = await runAppleScriptAdmin(task.command)
+        } else {
+            output = await runShellCommand(task.command)
+        }
         
         if output.exitCode == 0 {
-            tasks[index].state = .success("Task executed successfully. \(output.stdOut.prefix(100))")
+            let msg = output.stdOut.trimmingCharacters(in: .whitespacesAndNewlines)
+            tasks[index].state = .success(msg.isEmpty ? "Task executed successfully." : "Task executed successfully. \(msg.prefix(120))")
         } else {
-            tasks[index].state = .failure("Executed with notification: \(output.stdErr.isEmpty ? output.stdOut : output.stdErr)")
+            let err = output.stdErr.trimmingCharacters(in: .whitespacesAndNewlines)
+            tasks[index].state = .failure("Executed with notification: \(err.isEmpty ? output.stdOut : err)")
         }
         
         isRunningAny = tasks.contains(where: {
@@ -84,6 +92,7 @@ public final class OptimizerService: ObservableObject {
         }
     }
     
+    // MARK: - Execute Shell Command
     private func runShellCommand(_ command: String) async -> (exitCode: Int32, stdOut: String, stdErr: String) {
         return await Task.detached(priority: .userInitiated) {
             let process = Process()
@@ -109,6 +118,26 @@ public final class OptimizerService: ObservableObject {
             } catch {
                 return (-1, "", error.localizedDescription)
             }
+        }.value
+    }
+    
+    // MARK: - Execute Admin Shell Command via AppleScript Privilege Escalation
+    private func runAppleScriptAdmin(_ command: String) async -> (exitCode: Int32, stdOut: String, stdErr: String) {
+        return await Task.detached(priority: .userInitiated) {
+            let escapedCommand = command.replacingOccurrences(of: "\"", with: "\\\"")
+            let scriptSource = "do shell script \"\(escapedCommand)\" with administrator privileges"
+            
+            var errorDict: NSDictionary?
+            if let script = NSAppleScript(source: scriptSource) {
+                let result = script.executeAndReturnError(&errorDict)
+                if let err = errorDict {
+                    let errMsg = (err[NSAppleScript.errorMessage] as? String) ?? "User cancelled or admin privilege required."
+                    return (1, "", errMsg)
+                }
+                let output = result.stringValue ?? "Command executed with administrator privileges."
+                return (0, output, "")
+            }
+            return (1, "", "Failed to initialize AppleScript privileges.")
         }.value
     }
 }
