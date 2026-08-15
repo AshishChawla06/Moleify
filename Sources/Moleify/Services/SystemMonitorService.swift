@@ -3,6 +3,9 @@ import Combine
 import IOKit.ps
 import Darwin
 
+// Top-level Sendable Mach task port constant for Swift 6 Strict Concurrency
+private let taskSelfPort: mach_port_t = mach_task_self_
+
 @MainActor
 public final class SystemMonitorService: ObservableObject {
     @Published public var stats: SystemStats = SystemStats()
@@ -20,12 +23,6 @@ public final class SystemMonitorService: ObservableObject {
     private var previousNetRxBytes: UInt64 = 0
     private var previousNetTxBytes: UInt64 = 0
     private var lastNetworkCheckDate: Date = Date()
-    
-    @inline(__always)
-    private var taskSelfPort: mach_port_t {
-        let port: mach_port_t = mach_task_self_
-        return port
-    }
     
     public init() {
         startMonitoring()
