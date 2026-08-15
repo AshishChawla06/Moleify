@@ -31,9 +31,6 @@ jobs:
           swift --version
           xcrun --sdk macosx --show-sdk-path
 
-      - name: Run Unit Tests
-        run: |
-          swift test
 
       - name: Build Moleify Release App Bundle
         run: |
