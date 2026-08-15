@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+Moleify.app/
+*.xcodeproj
+*.xcworkspace
+.DS_Store
+*.log
+scratch/
