@@ -2,7 +2,9 @@
 
 > **Moleify** is a native macOS GUI application built upon and inspired by **[Mole](https://github.com/tw93/mole)** by [@tw93](https://github.com/tw93).
 
-![Moleify App Icon](AppIcon.icns)
+<p align="center">
+  <img src="AppIcon.png" width="128" alt="Moleify App Icon" />
+</p>
 
 [![Build & Release macOS App Bundle](https://github.com/AshishChawla06/Moleify/actions/workflows/build.yml/badge.svg)](https://github.com/AshishChawla06/Moleify/actions/workflows/build.yml)
 
