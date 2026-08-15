@@ -1,10 +1,7 @@
 import Foundation
 import Combine
 import IOKit.ps
-import Darwin
-
-// Top-level Sendable Mach task port constant for Swift 6 Strict Concurrency
-private let taskSelfPort: mach_port_t = mach_task_self_
+@preconcurrency import Darwin
 
 @MainActor
 public final class SystemMonitorService: ObservableObject {
@@ -89,7 +86,7 @@ public final class SystemMonitorService: ObservableObject {
             
             // Deallocate previous info safely under Swift 6 Strict Concurrency
             let prevSize = MemoryLayout<integer_t>.size * Int(previousCPUInfoCount)
-            vm_deallocate(taskSelfPort, vm_address_t(bitPattern: prevInfo), vm_size_t(prevSize))
+            vm_deallocate(mach_task_self_, vm_address_t(bitPattern: prevInfo), vm_size_t(prevSize))
         } else {
             for i in 0..<Int(numCPUs) {
                 cores.append(CPUCoreInfo(id: i + 1, usagePercentage: 15.0))
